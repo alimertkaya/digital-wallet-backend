@@ -1,19 +1,29 @@
 package com.alimertkaya.digitalwallet.config;
 
+import com.alimertkaya.digitalwallet.config.filter.JwtAuthenticationFilter;
+import com.alimertkaya.digitalwallet.repository.UserRepository;
+import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
 import org.springframework.security.config.annotation.method.configuration.EnableReactiveMethodSecurity;
 import org.springframework.security.config.annotation.web.reactive.EnableWebFluxSecurity;
+import org.springframework.security.config.web.server.SecurityWebFiltersOrder;
 import org.springframework.security.config.web.server.ServerHttpSecurity;
+import org.springframework.security.core.userdetails.ReactiveUserDetailsService;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.server.SecurityWebFilterChain;
+import reactor.core.publisher.Mono;
 
 @Configuration
 @EnableWebFluxSecurity
 @EnableReactiveMethodSecurity // metod bazli guvenlik
+@RequiredArgsConstructor
 public class SecurityConfig {
+
+    private final JwtAuthenticationFilter jwtAuthenticationFilter;
 
     // password u hashlemek icin
     @Bean
@@ -40,7 +50,8 @@ public class SecurityConfig {
                 .anyExchange().authenticated()
         );
 
-        // JWT filtresi gelecek
+        // default yerine kendi JWT filtremizi ekliyoruz
+        http.addFilterAt(jwtAuthenticationFilter, SecurityWebFiltersOrder.AUTHENTICATION);
 
         return http.build();
     }
