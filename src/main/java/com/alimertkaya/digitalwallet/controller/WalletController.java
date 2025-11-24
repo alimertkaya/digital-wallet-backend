@@ -1,6 +1,7 @@
 package com.alimertkaya.digitalwallet.controller;
 
 import com.alimertkaya.digitalwallet.dto.CreateWalletRequest;
+import com.alimertkaya.digitalwallet.dto.DepositRequest;
 import com.alimertkaya.digitalwallet.dto.WalletResponse;
 import com.alimertkaya.digitalwallet.service.WalletService;
 import jakarta.validation.Valid;
@@ -31,5 +32,11 @@ public class WalletController {
     @GetMapping("/{walletId}")
     public Mono<WalletResponse> getWalletById(@PathVariable Long walletId) {
         return walletService.getWalletById(walletId);
+    }
+
+    @PostMapping("/{walletId}/deposit")
+    @ResponseStatus(HttpStatus.ACCEPTED) // 202 Accepted -> talep alindi, arka plan isleniyor. / event-driven mimarisini icin OK 200 yerine
+    public Mono<Void> depositToWallet(@PathVariable Long walletId, @Valid @RequestBody DepositRequest request) {
+        return walletService.depositToWallet(walletId, request);
     }
 }

@@ -1,12 +1,13 @@
 package com.alimertkaya.digitalwallet.service.impl;
 
-import com.alimertkaya.digitalwallet.dto.CreateWalletRequest;
-import com.alimertkaya.digitalwallet.dto.WalletResponse;
+import com.alimertkaya.digitalwallet.dto.*;
 import com.alimertkaya.digitalwallet.entity.User;
 import com.alimertkaya.digitalwallet.entity.Wallet;
 import com.alimertkaya.digitalwallet.repository.WalletRepository;
+import com.alimertkaya.digitalwallet.service.KafkaProducerService;
 import com.alimertkaya.digitalwallet.service.WalletService;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.context.ReactiveSecurityContextHolder;
 import org.springframework.security.core.context.SecurityContext;
@@ -18,11 +19,13 @@ import reactor.core.publisher.Mono;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class WalletServiceImpl implements WalletService {
 
     private final WalletRepository walletRepository;
+    private final KafkaProducerService kafkaProducerService;
 
     // mevcut user u alir
     public Mono<User> getCurrentUser() {
@@ -69,5 +72,28 @@ public class WalletServiceImpl implements WalletService {
                 .map(WalletResponse::fromEntity)
                 .switchIfEmpty(Mono.error(new ResponseStatusException(HttpStatus.NOT_FOUND,
                         "Cüzdan bulunamadı veya bu cüzdana erişim yetkiniz yok.")));
+    }
+
+    @Override
+    public Mono<Void> depositToWallet(Long walletId, DepositRequest request) {
+        return getCurrentUser()
+                .flatMap(user ->
+                        // user un bu wallet e sahip oldugunu dogrulama
+                        walletRepository.findByIdAndUserId(walletId, user.getId())
+                                .switchIfEmpty(Mono.error(new ResponseStatusException(HttpStatus.NOT_FOUND,
+                                        "Cüzdan bulunamadı veya bu cüzdana erişim yetkiniz yok.")))
+                )
+                .flatMap(wallet -> {
+                    TransactionEvent event = TransactionEvent.builder()
+                            .type(TransactionType.DEPOSIT)
+                            .sourceWalletId(wallet.getId()) // para yatirilan wallet
+                            .targetWalletId(null) // para yatirma isleminde hedef cuzdan yoktur
+                            .amount(request.getAmount())
+                            .currencyCode(wallet.getCurrencyCode())
+                            .build();
+
+                    log.info("Para yatırma talebi Kafka'ya gönderiliyor. Cüzdan ID: {}, Tutar: {}", wallet.getId(), request.getAmount());
+                    return kafkaProducerService.sendTransactionEvent(event);
+                });
     }
 }
