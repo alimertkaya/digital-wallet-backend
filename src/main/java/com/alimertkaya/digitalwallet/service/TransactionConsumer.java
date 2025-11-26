@@ -67,6 +67,72 @@ public class TransactionConsumer {
                 .doOnError(error -> log.error("Para yatırma sırasında veritabını hatası", error))
                 .subscribe();
     }
+
+    public void processTransfer(TransactionEvent event) {
+        log.info("Transfer işlemi başlatılıyor. {} -> {}, Tutar: {}", event.getSourceWalletId(), event.getTargetWalletId() ,event.getAmount());
+
+        walletRepository.findById(event.getSourceWalletId())
+                .flatMap(sourceWallet -> {
+                    // bakiyeyi dus
+                    BigDecimal currentBalance = sourceWallet.getBalance();
+                    sourceWallet.setBalance(sourceWallet.getBalance().subtract(event.getAmount()));
+                    return walletRepository.save(sourceWallet)
+                            .flatMap(savedSource -> saveHistory(
+                                    savedSource,
+                                    TransactionType.TRANSFER,
+                                    HistoryDirection.OUT,
+                                    event.getAmount(),
+                                    currentBalance,
+                                    event.getTargetWalletId(),
+                                    "Transfer Gönderimi"
+                            ));
+                })
+                .flatMap(updatedSource -> {
+                    // wallet guncelle, para yatir
+                    return walletRepository.findById(event.getTargetWalletId())
+                            .flatMap(targetWallet -> {
+                                BigDecimal currentBalance = targetWallet.getBalance();
+                                targetWallet.setBalance(targetWallet.getBalance().add(event.getAmount()));
+                                return walletRepository.save(targetWallet)
+                                        .flatMap(savedTarget -> saveHistory(
+                                                savedTarget,
+                                                TransactionType.TRANSFER,
+                                                HistoryDirection.IN,
+                                                event.getAmount(),
+                                                currentBalance,
+                                                event.getSourceWalletId(),
+                                                "Transfer Alımı"
+                                        ));
+                            });
+                })
+                .doOnSuccess(v -> log.info("Transfer başarıyla tamamlandı."))
+                .doOnError(e -> log.error("Transfer sırasında hata oluştu!", e))
+                .subscribe();
+    }
+
+    private void processWithdraw(TransactionEvent event) {
+        log.info("Para çekme işlemi başlatılıyor. Cüzdan ID: {}, Tutar: {}", event.getSourceWalletId(), event.getAmount());
+
+        walletRepository.findById(event.getSourceWalletId())
+                .flatMap(wallet -> {
+                    BigDecimal currentBalance = wallet.getBalance();
+                    wallet.setBalance(wallet.getBalance().subtract(event.getAmount()));
+                    return walletRepository.save(wallet)
+                            .flatMap(savedWallet -> saveHistory(
+                                    savedWallet,
+                                    TransactionType.WITHDRAW,
+                                    HistoryDirection.OUT,
+                                    event.getAmount(),
+                                    currentBalance,
+                                    null,
+                                    "Para Çekme"
+                            ));
+                })
+                .doOnSuccess(updatedWallet -> log.info("Para çekme başarılı. Yeni Bakiye: {}", updatedWallet.getBalanceAfter()))
+                .doOnError(error -> log.error("Para çekme sırasında veritabını hatası", error))
+                .subscribe();
+    }
+
     // helper method
     private Mono<TransactionHistory> saveHistory(Wallet wallet, TransactionType type, HistoryDirection direction, BigDecimal amount,
                                                  BigDecimal balanceBefore, Long relatedWalletId, String description) {

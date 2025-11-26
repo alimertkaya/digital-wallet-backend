@@ -96,4 +96,55 @@ public class WalletServiceImpl implements WalletService {
                     return kafkaProducerService.sendTransactionEvent(event);
                 });
     }
+
+    @Override
+    public Mono<Void> transferFunds(Long sourceWalletId, TransferRequest request) {
+        return getCurrentUser()
+                .flatMap(user -> walletRepository.findByIdAndUserId(sourceWalletId, user.getId())
+                        .switchIfEmpty(Mono.error(new ResponseStatusException(HttpStatus.NOT_FOUND,
+                                "Cüzdan bulunamadı veya bu cüzdana erişim yetkiniz yok.")))
+                )
+                .flatMap(sourceWallet -> {
+                    // bakiye kontrol
+                    if (sourceWallet.getBalance().compareTo(request.getAmount()) < 0) {
+                        return Mono.error(new ResponseStatusException(HttpStatus.BAD_REQUEST,"Yetersiz bakiye! Mevcut: " + sourceWallet.getBalance()));
+                    }
+
+                    if (sourceWallet.getId().equals(request.getTargetWalletId())) {
+                        return Mono.error(new ResponseStatusException(HttpStatus.BAD_REQUEST,"Kendinize transfer yapamazsınız."));
+                    }
+
+                    return walletRepository.findById(request.getTargetWalletId())
+                            .switchIfEmpty(Mono.error(new ResponseStatusException(HttpStatus.NOT_FOUND,"Hedef cüzdan bulunamadı.")))
+                            .flatMap(targetWalllet -> {
+                                TransactionEvent event = TransactionEvent.builder()
+                                        .type(TransactionType.TRANSFER)
+                                        .sourceWalletId(sourceWallet.getId())
+                                        .targetWalletId(targetWalllet.getId())
+                                        .amount(request.getAmount())
+                                        .currencyCode(sourceWallet.getCurrencyCode())
+                                        .build();
+
+                                log.info("Transfer talebi Kafka'ya gönderiliyor. {} -> {}, Tutar: {}",
+                                        sourceWallet.getId(), targetWalllet.getId(), request.getAmount());
+
+                                return kafkaProducerService.sendTransactionEvent(event);
+                            });
+                });
+    }
+
+    @Override
+    public Flux<TransactionHistoryResponse> getWalletTransactionHistory(Long walletId, int page, int size) {
+        // size gelen kayit sayisi
+        Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt"));
+
+        return getCurrentUser()
+                .flatMapMany(user -> {
+                    return walletRepository.findByIdAndUserId(walletId, user.getId())
+                            .switchIfEmpty(Mono.error(new ResponseStatusException(HttpStatus.NOT_FOUND,
+                                    "Cüzdan bulunamadı veya bu cüzdana erişim yetkiniz yok.")))
+                            .flatMapMany(wallet -> transactionHistoryRepository.findByWalletId(walletId, pageable));
+                })
+                .map(TransactionHistoryResponse::fromEntity);
+    }
 }

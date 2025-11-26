@@ -39,6 +39,12 @@ public class WalletController {
     public Mono<Void> depositToWallet(@PathVariable Long walletId, @Valid @RequestBody DepositRequest request) {
         return walletService.depositToWallet(walletId, request);
     }
+
+    @PostMapping("/{walletId}/transfer")
+    @ResponseStatus(HttpStatus.ACCEPTED)
+    public Mono<Void> transferFunds(@PathVariable Long walletId, @Valid @RequestBody TransferRequest request) {
+        return walletService.transferFunds(walletId, request);
+    }
     @GetMapping("/{walletId}/transactions")
     public Flux<TransactionHistoryResponse> getWalletTransactionHistory(@PathVariable Long walletId,
                                                                         @RequestParam(defaultValue = "0") int page,
