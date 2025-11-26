@@ -8,8 +8,10 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.stereotype.Service;
+import reactor.core.publisher.Mono;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 
 @Service
 @RequiredArgsConstructor
@@ -18,6 +20,7 @@ public class TransactionConsumer {
 
     private final WalletRepository walletRepository;
     private final ObjectMapper objectMapper; // JSON -> object
+    private final TransactionHistoryRepository transactionHistoryRepository;
 
     // yeni mesaj gelince auto tetiklenir
     @KafkaListener(topics = KafkaTopicConfig.WALLET_TRANSACTIONS_TOPIC, groupId = "digital-wallet-group")
@@ -31,8 +34,8 @@ public class TransactionConsumer {
             // islem tipine gore
             switch (event.getType()) {
                 case DEPOSIT -> processDeposit(event);
-                case WITHDRAW -> log.info("Para çekme işlemi henüz eklenmedi.");
-                case TRANSFER -> log.info("Transfer işlemi henüz eklenmedi.");
+                case WITHDRAW -> processWithdraw(event);
+                case TRANSFER -> processTransfer(event);
                 default -> log.warn("Bilinmeten işlem tipi: {}", event.getType());
             }
         } catch (Exception e) {
@@ -63,7 +66,7 @@ public class TransactionConsumer {
                                     "Para Yatırma"
                             ));
                 })
-                .doOnSuccess(updatedWallet -> log.info("Para yatırma başarılı. Yeni Bakiye: {}", updatedWallet.getBalance()))
+                .doOnSuccess(updatedWallet -> log.info("Para yatırma başarılı. Yeni Bakiye: {}", updatedWallet.getBalanceAfter()))
                 .doOnError(error -> log.error("Para yatırma sırasında veritabını hatası", error))
                 .subscribe();
     }

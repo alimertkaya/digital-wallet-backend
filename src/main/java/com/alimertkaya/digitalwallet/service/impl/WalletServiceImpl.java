@@ -1,13 +1,17 @@
 package com.alimertkaya.digitalwallet.service.impl;
 
 import com.alimertkaya.digitalwallet.dto.*;
+import com.alimertkaya.digitalwallet.dto.enums.TransactionType;
 import com.alimertkaya.digitalwallet.entity.User;
 import com.alimertkaya.digitalwallet.entity.Wallet;
+import com.alimertkaya.digitalwallet.repository.TransactionHistoryRepository;
 import com.alimertkaya.digitalwallet.repository.WalletRepository;
 import com.alimertkaya.digitalwallet.service.KafkaProducerService;
 import com.alimertkaya.digitalwallet.service.WalletService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.context.ReactiveSecurityContextHolder;
 import org.springframework.security.core.context.SecurityContext;
@@ -16,6 +20,7 @@ import org.springframework.web.server.ResponseStatusException;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
+import org.springframework.data.domain.Pageable;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
@@ -26,6 +31,7 @@ public class WalletServiceImpl implements WalletService {
 
     private final WalletRepository walletRepository;
     private final KafkaProducerService kafkaProducerService;
+    private final TransactionHistoryRepository transactionHistoryRepository;
 
     // mevcut user u alir
     public Mono<User> getCurrentUser() {
@@ -130,6 +136,33 @@ public class WalletServiceImpl implements WalletService {
 
                                 return kafkaProducerService.sendTransactionEvent(event);
                             });
+                });
+    }
+
+    @Override
+    public Mono<Void> withdrawFromWallet(Long walletId, WithdrawRequest request) {
+        return getCurrentUser()
+                .flatMap(user -> walletRepository.findByIdAndUserId(walletId, user.getId())
+                        .switchIfEmpty(Mono.error(new ResponseStatusException(HttpStatus.NOT_FOUND,
+                                "Cüzdan bulunamadı veya bu cüzdana erişim yetkiniz yok.")))
+                )
+                .flatMap(wallet -> {
+                    // bakiye kontrol
+                    if (wallet.getBalance().compareTo(request.getAmount()) < 0) {
+                        return Mono.error(new ResponseStatusException(HttpStatus.BAD_REQUEST,"Yetersiz bakiye! Mevcut: " + wallet.getBalance()));
+                    }
+
+                    TransactionEvent event = TransactionEvent.builder()
+                            .type(TransactionType.WITHDRAW)
+                            .sourceWalletId(wallet.getId())
+                            .targetWalletId(null)
+                            .amount(request.getAmount())
+                            .currencyCode(wallet.getCurrencyCode())
+                            .build();
+
+                    log.info("Para çekme talebi Kafka'ya gönderiliyor. Cüzdan ID: {}, Tutar: {}", wallet.getId(), request.getAmount());
+
+                    return kafkaProducerService.sendTransactionEvent(event);
                 });
     }
 

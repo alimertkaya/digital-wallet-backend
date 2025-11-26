@@ -1,8 +1,6 @@
 package com.alimertkaya.digitalwallet.controller;
 
-import com.alimertkaya.digitalwallet.dto.CreateWalletRequest;
-import com.alimertkaya.digitalwallet.dto.DepositRequest;
-import com.alimertkaya.digitalwallet.dto.WalletResponse;
+import com.alimertkaya.digitalwallet.dto.*;
 import com.alimertkaya.digitalwallet.service.WalletService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -45,6 +43,13 @@ public class WalletController {
     public Mono<Void> transferFunds(@PathVariable Long walletId, @Valid @RequestBody TransferRequest request) {
         return walletService.transferFunds(walletId, request);
     }
+
+    @PostMapping("/{walletId}/withdraw")
+    @ResponseStatus(HttpStatus.ACCEPTED)
+    public Mono<Void> withdrawFromWallet(@PathVariable Long walletId, @Valid @RequestBody WithdrawRequest request) {
+        return walletService.withdrawFromWallet(walletId, request);
+    }
+
     @GetMapping("/{walletId}/transactions")
     public Flux<TransactionHistoryResponse> getWalletTransactionHistory(@PathVariable Long walletId,
                                                                         @RequestParam(defaultValue = "0") int page,

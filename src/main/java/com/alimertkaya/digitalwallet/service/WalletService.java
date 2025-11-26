@@ -1,8 +1,6 @@
 package com.alimertkaya.digitalwallet.service;
 
-import com.alimertkaya.digitalwallet.dto.CreateWalletRequest;
-import com.alimertkaya.digitalwallet.dto.DepositRequest;
-import com.alimertkaya.digitalwallet.dto.WalletResponse;
+import com.alimertkaya.digitalwallet.dto.*;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
@@ -19,7 +17,11 @@ public interface WalletService {
 
     // para yatirma talebi, kafka event i olarak gonderir
     Mono<Void> depositToWallet(Long walletId, DepositRequest request);
+
     // wallet ler arasi transfer talebi olusturur
     Mono<Void> transferFunds(Long sourceWalletId, TransferRequest request);
+
+    Mono<Void> withdrawFromWallet(Long walletId, WithdrawRequest request);
+
     Flux<TransactionHistoryResponse> getWalletTransactionHistory(Long walletId, int page, int size);
 }
