@@ -39,4 +39,10 @@ public class WalletController {
     public Mono<Void> depositToWallet(@PathVariable Long walletId, @Valid @RequestBody DepositRequest request) {
         return walletService.depositToWallet(walletId, request);
     }
+    @GetMapping("/{walletId}/transactions")
+    public Flux<TransactionHistoryResponse> getWalletTransactionHistory(@PathVariable Long walletId,
+                                                                        @RequestParam(defaultValue = "0") int page,
+                                                                        @RequestParam(defaultValue = "20") int size) {
+        return walletService.getWalletTransactionHistory(walletId, page, size);
+    }
 }

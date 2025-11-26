@@ -52,10 +52,38 @@ public class TransactionConsumer {
                     BigDecimal newBalance = currentBalance.add(event.getAmount());
                     wallet.setBalance(newBalance);
 
-                    return walletRepository.save(wallet);
+                    return walletRepository.save(wallet)
+                            .flatMap(savedWallet -> saveHistory(
+                                    savedWallet,
+                                    TransactionType.DEPOSIT,
+                                    HistoryDirection.IN,
+                                    event.getAmount(),
+                                    currentBalance,
+                                    null,
+                                    "Para Yatırma"
+                            ));
                 })
                 .doOnSuccess(updatedWallet -> log.info("Para yatırma başarılı. Yeni Bakiye: {}", updatedWallet.getBalance()))
                 .doOnError(error -> log.error("Para yatırma sırasında veritabını hatası", error))
                 .subscribe();
+    }
+    // helper method
+    private Mono<TransactionHistory> saveHistory(Wallet wallet, TransactionType type, HistoryDirection direction, BigDecimal amount,
+                                                 BigDecimal balanceBefore, Long relatedWalletId, String description) {
+        TransactionHistory history = TransactionHistory.builder()
+                .walletId(wallet.getId())
+                .relatedWalletId(relatedWalletId)
+                .type(type)
+                .amount(amount)
+                .currencyCode(wallet.getCurrencyCode())
+                .balanceBefore(balanceBefore)
+                .balanceAfter(wallet.getBalance())
+                .direction(direction)
+                .description(description)
+                .createdAt(LocalDateTime.now())
+                .build();
+
+        return transactionHistoryRepository.save(history)
+                .doOnSuccess(h -> log.info("İşlem geçmişi kaydedildi. Cüzdan: {}, Tip: {}, Para Birimi: {}", wallet.getId(), type, wallet.getCurrencyCode()));
     }
 }

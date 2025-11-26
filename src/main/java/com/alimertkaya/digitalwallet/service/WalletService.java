@@ -19,4 +19,5 @@ public interface WalletService {
 
     // para yatirma talebi, kafka event i olarak gonderir
     Mono<Void> depositToWallet(Long walletId, DepositRequest request);
+    Flux<TransactionHistoryResponse> getWalletTransactionHistory(Long walletId, int page, int size);
 }

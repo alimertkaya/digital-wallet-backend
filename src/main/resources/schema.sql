@@ -34,4 +34,23 @@ CREATE TABLE IF NOT EXISTS wallet (
         FOREIGN KEY(user_id)
         REFERENCES users(id)
         ON DELETE CASCADE
-)
+);
+
+CREATE TABLE IF NOT EXISTS transaction_history (
+    id SERIAL PRIMARY KEY,
+    wallet_id BIGINT NOT NULL,
+    related_wallet_id BIGINT, -- transfer de karsi tarafin id si
+    type VARCHAR(20) NOT NULL,
+    direction VARCHAR(10) NOT NULL,
+    amount NUMERIC(19, 2) NOT NULL,
+    balance_before NUMERIC(19,2),
+    balance_after NUMERIC(19,2) NOT NULL,
+    currency_code VARCHAR(10) NOT NULL,
+    description VARCHAR(255),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT fk_wallet
+        FOREIGN KEY(wallet_id)
+        REFERENCES wallets(id)
+        ON DELETE CASCADE
+);
