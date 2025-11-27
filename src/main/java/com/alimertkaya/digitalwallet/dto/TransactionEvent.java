@@ -1,5 +1,6 @@
 package com.alimertkaya.digitalwallet.dto;
 
+import com.alimertkaya.digitalwallet.dto.enums.TransactionType;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -31,7 +32,9 @@ public class TransactionEvent {
     private Long targetWalletId;
 
     // islem tutari
-    private BigDecimal amount;
+    private BigDecimal sourceAmount;
+    private BigDecimal targetAmount;
 
-    private String currencyCode;
+    private String sourceCurrency;
+    private String targetCurrency;
 }

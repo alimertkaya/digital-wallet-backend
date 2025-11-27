@@ -2,6 +2,11 @@ package com.alimertkaya.digitalwallet.service;
 
 import com.alimertkaya.digitalwallet.config.KafkaTopicConfig;
 import com.alimertkaya.digitalwallet.dto.TransactionEvent;
+import com.alimertkaya.digitalwallet.dto.enums.HistoryDirection;
+import com.alimertkaya.digitalwallet.dto.enums.TransactionType;
+import com.alimertkaya.digitalwallet.entity.TransactionHistory;
+import com.alimertkaya.digitalwallet.entity.Wallet;
+import com.alimertkaya.digitalwallet.repository.TransactionHistoryRepository;
 import com.alimertkaya.digitalwallet.repository.WalletRepository;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
@@ -44,23 +49,24 @@ public class TransactionConsumer {
     }
 
     private void processDeposit(TransactionEvent event) {
-        log.info("Para yatırma işlemi başlatılıyor. Cüzdan ID: {}, Tutar: {}", event.getSourceWalletId(), event.getAmount());
+        log.info("Para yatırma işlemi başlatılıyor. Cüzdan ID: {}, Tutar: {} {}", event.getSourceWalletId(), event.getSourceAmount(), event.getSourceCurrency());
 
         // @KafkaListener blocking thread uzerinde calisir
         // repository reaktif oldugu icin reaktif zincirin sonuna .subscribe ekledik
-
         walletRepository.findById(event.getSourceWalletId())
                 .flatMap(wallet -> {
                     BigDecimal currentBalance = wallet.getBalance();
-                    BigDecimal newBalance = currentBalance.add(event.getAmount());
-                    wallet.setBalance(newBalance);
+                    wallet.setBalance(wallet.getBalance().add(event.getTargetAmount()));
 
                     return walletRepository.save(wallet)
                             .flatMap(savedWallet -> saveHistory(
                                     savedWallet,
                                     TransactionType.DEPOSIT,
                                     HistoryDirection.IN,
-                                    event.getAmount(),
+                                    event.getSourceAmount(),
+                                    event.getTargetAmount(),
+                                    event.getSourceCurrency(),
+                                    event.getTargetCurrency(),
                                     currentBalance,
                                     null,
                                     "Para Yatırma"
@@ -72,19 +78,22 @@ public class TransactionConsumer {
     }
 
     public void processTransfer(TransactionEvent event) {
-        log.info("Transfer işlemi başlatılıyor. {} -> {}, Tutar: {}", event.getSourceWalletId(), event.getTargetWalletId() ,event.getAmount());
+        log.info("Transfer işlemi başlatılıyor. {} -> {}, Tutar: {} {}", event.getSourceWalletId(), event.getTargetWalletId(), event.getSourceAmount(), event.getSourceCurrency());
 
         walletRepository.findById(event.getSourceWalletId())
                 .flatMap(sourceWallet -> {
                     // bakiyeyi dus
                     BigDecimal currentBalance = sourceWallet.getBalance();
-                    sourceWallet.setBalance(sourceWallet.getBalance().subtract(event.getAmount()));
+                    sourceWallet.setBalance(sourceWallet.getBalance().subtract(event.getSourceAmount()));
                     return walletRepository.save(sourceWallet)
                             .flatMap(savedSource -> saveHistory(
                                     savedSource,
                                     TransactionType.TRANSFER,
                                     HistoryDirection.OUT,
-                                    event.getAmount(),
+                                    event.getSourceAmount(),
+                                    event.getTargetAmount(),
+                                    event.getSourceCurrency(),
+                                    event.getTargetCurrency(),
                                     currentBalance,
                                     event.getTargetWalletId(),
                                     "Transfer Gönderimi"
@@ -95,13 +104,16 @@ public class TransactionConsumer {
                     return walletRepository.findById(event.getTargetWalletId())
                             .flatMap(targetWallet -> {
                                 BigDecimal currentBalance = targetWallet.getBalance();
-                                targetWallet.setBalance(targetWallet.getBalance().add(event.getAmount()));
+                                targetWallet.setBalance(targetWallet.getBalance().add(event.getTargetAmount()));
                                 return walletRepository.save(targetWallet)
                                         .flatMap(savedTarget -> saveHistory(
                                                 savedTarget,
                                                 TransactionType.TRANSFER,
                                                 HistoryDirection.IN,
-                                                event.getAmount(),
+                                                event.getSourceAmount(),
+                                                event.getTargetAmount(),
+                                                event.getSourceCurrency(),
+                                                event.getTargetCurrency(),
                                                 currentBalance,
                                                 event.getSourceWalletId(),
                                                 "Transfer Alımı"
@@ -114,18 +126,21 @@ public class TransactionConsumer {
     }
 
     private void processWithdraw(TransactionEvent event) {
-        log.info("Para çekme işlemi başlatılıyor. Cüzdan ID: {}, Tutar: {}", event.getSourceWalletId(), event.getAmount());
+        log.info("Para çekme işlemi başlatılıyor. Cüzdan ID: {}, Tutar: {} {}", event.getSourceWalletId(), event.getSourceAmount(), event.getSourceCurrency());
 
         walletRepository.findById(event.getSourceWalletId())
                 .flatMap(wallet -> {
                     BigDecimal currentBalance = wallet.getBalance();
-                    wallet.setBalance(wallet.getBalance().subtract(event.getAmount()));
+                    wallet.setBalance(wallet.getBalance().subtract(event.getSourceAmount()));
                     return walletRepository.save(wallet)
                             .flatMap(savedWallet -> saveHistory(
                                     savedWallet,
                                     TransactionType.WITHDRAW,
                                     HistoryDirection.OUT,
-                                    event.getAmount(),
+                                    event.getSourceAmount(),
+                                    event.getTargetAmount(),
+                                    event.getSourceCurrency(),
+                                    event.getTargetCurrency(),
                                     currentBalance,
                                     null,
                                     "Para Çekme"
@@ -137,14 +152,17 @@ public class TransactionConsumer {
     }
 
     // helper method
-    private Mono<TransactionHistory> saveHistory(Wallet wallet, TransactionType type, HistoryDirection direction, BigDecimal amount,
-                                                 BigDecimal balanceBefore, Long relatedWalletId, String description) {
+    private Mono<TransactionHistory> saveHistory(Wallet wallet, TransactionType type, HistoryDirection direction, BigDecimal sourceAmount, BigDecimal targetAmount,
+                                                 String sourceCurrency, String targetCurrency, BigDecimal balanceBefore, Long relatedWalletId, String description) {
+        BigDecimal amountToSave = (direction == HistoryDirection.OUT) ? sourceAmount : targetAmount;
+        String currencyToSave = (direction == HistoryDirection.OUT) ? sourceCurrency : targetCurrency;
+
         TransactionHistory history = TransactionHistory.builder()
                 .walletId(wallet.getId())
                 .relatedWalletId(relatedWalletId)
                 .type(type)
-                .amount(amount)
-                .currencyCode(wallet.getCurrencyCode())
+                .amount(amountToSave)
+                .currencyCode(currencyToSave)
                 .balanceBefore(balanceBefore)
                 .balanceAfter(wallet.getBalance())
                 .direction(direction)

@@ -37,9 +37,11 @@ public class KafkaProducerServiceImpl implements KafkaProducerService {
                 .flatMap(jsonEvent -> {
                     // JSON string ini kafka ya gonderir
                     log.info("Kafka'ya even gönderiliyor. EventId: {}", event.getEventId());
+                    String key = String.valueOf(event.getSourceWalletId());
+
                     return Mono.fromFuture(kafkaTemplate.send(
                             KafkaTopicConfig.WALLET_TRANSACTIONS_TOPIC,
-                            event.getEventId(), // message key
+                            key, // message key
                             jsonEvent // message value
                     ));
                 })

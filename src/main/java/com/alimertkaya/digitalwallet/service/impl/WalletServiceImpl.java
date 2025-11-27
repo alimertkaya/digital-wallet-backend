@@ -6,6 +6,7 @@ import com.alimertkaya.digitalwallet.entity.User;
 import com.alimertkaya.digitalwallet.entity.Wallet;
 import com.alimertkaya.digitalwallet.repository.TransactionHistoryRepository;
 import com.alimertkaya.digitalwallet.repository.WalletRepository;
+import com.alimertkaya.digitalwallet.service.ExchangeRateService;
 import com.alimertkaya.digitalwallet.service.KafkaProducerService;
 import com.alimertkaya.digitalwallet.service.WalletService;
 import lombok.RequiredArgsConstructor;
@@ -32,6 +33,7 @@ public class WalletServiceImpl implements WalletService {
     private final WalletRepository walletRepository;
     private final KafkaProducerService kafkaProducerService;
     private final TransactionHistoryRepository transactionHistoryRepository;
+    private final ExchangeRateService exchangeRateService;
 
     // mevcut user u alir
     public Mono<User> getCurrentUser() {
@@ -94,8 +96,10 @@ public class WalletServiceImpl implements WalletService {
                             .type(TransactionType.DEPOSIT)
                             .sourceWalletId(wallet.getId()) // para yatirilan wallet
                             .targetWalletId(null) // para yatirma isleminde hedef cuzdan yoktur
-                            .amount(request.getAmount())
-                            .currencyCode(wallet.getCurrencyCode())
+                            .sourceAmount(request.getAmount())
+                            .targetAmount(request.getAmount())
+                            .sourceCurrency(wallet.getCurrencyCode())
+                            .targetCurrency(wallet.getCurrencyCode())
                             .build();
 
                     log.info("Para yatırma talebi Kafka'ya gönderiliyor. Cüzdan ID: {}, Tutar: {}", wallet.getId(), request.getAmount());
@@ -105,37 +109,46 @@ public class WalletServiceImpl implements WalletService {
 
     @Override
     public Mono<Void> transferFunds(Long sourceWalletId, TransferRequest request) {
-        return getCurrentUser()
+        Mono<Wallet> sourceWalletMono = getCurrentUser()
                 .flatMap(user -> walletRepository.findByIdAndUserId(sourceWalletId, user.getId())
-                        .switchIfEmpty(Mono.error(new ResponseStatusException(HttpStatus.NOT_FOUND,
-                                "Cüzdan bulunamadı veya bu cüzdana erişim yetkiniz yok.")))
-                )
-                .flatMap(sourceWallet -> {
-                    // bakiye kontrol
+                        .switchIfEmpty(Mono.error(new ResponseStatusException(HttpStatus.NOT_FOUND, "Kaynak cüzdan bulunamadı veya yetkiniz yok."))));
+
+        Mono<Wallet> targetWalletMono = walletRepository.findById(request.getTargetWalletId())
+                .switchIfEmpty(Mono.error(new ResponseStatusException(HttpStatus.NOT_FOUND, "Hedef cüzdan bulunamadı.")));
+
+        return Mono.zip(sourceWalletMono, targetWalletMono)
+                .flatMap(tuple -> {
+                    Wallet sourceWallet = tuple.getT1();
+                    Wallet targetWallet = tuple.getT2();
+
                     if (sourceWallet.getBalance().compareTo(request.getAmount()) < 0) {
-                        return Mono.error(new ResponseStatusException(HttpStatus.BAD_REQUEST,"Yetersiz bakiye! Mevcut: " + sourceWallet.getBalance()));
+                        return Mono.error(new ResponseStatusException(HttpStatus.BAD_REQUEST, "Yetersiz bakiye!"));
+                    }
+                    if (sourceWallet.getId().equals(targetWallet.getId())) {
+                        return Mono.error(new ResponseStatusException(HttpStatus.BAD_REQUEST, "Kendinize transfer yapamazsınız."));
                     }
 
-                    if (sourceWallet.getId().equals(request.getTargetWalletId())) {
-                        return Mono.error(new ResponseStatusException(HttpStatus.BAD_REQUEST,"Kendinize transfer yapamazsınız."));
-                    }
+                    return exchangeRateService.convertCurrency(
+                            request.getAmount(),
+                            sourceWallet.getCurrencyCode(),
+                            targetWallet.getCurrencyCode()
+                    ).flatMap(convertedAmount -> {
+                        TransactionEvent event = TransactionEvent.builder()
+                                .type(TransactionType.TRANSFER)
+                                .sourceWalletId(sourceWallet.getId())
+                                .targetWalletId(targetWallet.getId())
+                                .sourceAmount(request.getAmount())
+                                .targetAmount(convertedAmount)
+                                .sourceCurrency(sourceWallet.getCurrencyCode())
+                                .targetCurrency(targetWallet.getCurrencyCode())
+                                .build();
 
-                    return walletRepository.findById(request.getTargetWalletId())
-                            .switchIfEmpty(Mono.error(new ResponseStatusException(HttpStatus.NOT_FOUND,"Hedef cüzdan bulunamadı.")))
-                            .flatMap(targetWalllet -> {
-                                TransactionEvent event = TransactionEvent.builder()
-                                        .type(TransactionType.TRANSFER)
-                                        .sourceWalletId(sourceWallet.getId())
-                                        .targetWalletId(targetWalllet.getId())
-                                        .amount(request.getAmount())
-                                        .currencyCode(sourceWallet.getCurrencyCode())
-                                        .build();
+                        log.info("Transfer talebi Kafka'ya gönderiliyor. {} -> {}, Tutar: {} {}, Hedef Tutar: {} {}",
+                                sourceWallet.getId(), targetWallet.getId(), request.getAmount(),
+                                sourceWallet.getCurrencyCode(), convertedAmount, targetWallet.getCurrencyCode());
 
-                                log.info("Transfer talebi Kafka'ya gönderiliyor. {} -> {}, Tutar: {}",
-                                        sourceWallet.getId(), targetWalllet.getId(), request.getAmount());
-
-                                return kafkaProducerService.sendTransactionEvent(event);
-                            });
+                        return kafkaProducerService.sendTransactionEvent(event);
+                    });
                 });
     }
 
@@ -156,8 +169,10 @@ public class WalletServiceImpl implements WalletService {
                             .type(TransactionType.WITHDRAW)
                             .sourceWalletId(wallet.getId())
                             .targetWalletId(null)
-                            .amount(request.getAmount())
-                            .currencyCode(wallet.getCurrencyCode())
+                            .sourceAmount(request.getAmount())
+                            .targetAmount(request.getAmount())
+                            .sourceCurrency(wallet.getCurrencyCode())
+                            .targetCurrency(wallet.getCurrencyCode())
                             .build();
 
                     log.info("Para çekme talebi Kafka'ya gönderiliyor. Cüzdan ID: {}, Tutar: {}", wallet.getId(), request.getAmount());
