@@ -79,11 +79,13 @@ public class AuthServiceImpl implements AuthService {
     @Override
     public Mono<AuthResponse> login(LoginRequest request) {
         return userRepository.findByUsername(request.getUsername())
-                .switchIfEmpty(Mono.error(new RuntimeException("Kullanıcı bulunamadı veya şifre hatalı")))
+                .switchIfEmpty(Mono.error(new ResponseStatusException(HttpStatus.UNAUTHORIZED,
+                        "Kullanıcı bulunamadı veya şifre hatalı")))
                 .flatMap(user -> {
                     // kullaici bulunduysa password match et
                     if (!passwordEncoder.matches(request.getPassword(), user.getPassword())) {
-                        return Mono.error(new RuntimeException("Kullanıcı bulunamadı veya şifre hatalı"));
+                        return Mono.error(new ResponseStatusException(HttpStatus.UNAUTHORIZED,
+                                "Kullanıcı bulunamadı veya şifre hatalı"));
                     }
                     return Mono.just(AuthResponse.builder()
                             .token(jwtService.generateToken(user))

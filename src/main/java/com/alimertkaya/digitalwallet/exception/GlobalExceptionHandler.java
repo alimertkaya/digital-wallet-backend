@@ -1,5 +1,6 @@
 package com.alimertkaya.digitalwallet.exception;
 
+import com.alimertkaya.digitalwallet.exception.kafka.EventSerializationException;
 import io.jsonwebtoken.ExpiredJwtException;
 import io.jsonwebtoken.MalformedJwtException;
 import io.jsonwebtoken.security.SignatureException;
@@ -16,6 +17,7 @@ import org.springframework.web.server.ServerWebInputException;
 import reactor.core.publisher.Mono;
 
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 
 @Slf4j // for log
@@ -87,6 +89,22 @@ public class GlobalExceptionHandler {
                 .build();
         log.info("Access denied: {}", ex.getMessage());
         return Mono.just(ResponseEntity.status(HttpStatus.FORBIDDEN).body(errorResponse));
+    }
+
+    @ExceptionHandler(EventSerializationException.class)
+    public Mono<ResponseEntity<ErrorResponse>> handleEventSerializationException(EventSerializationException ex,
+                                                                                 ServerWebExchange exchange) {
+        ErrorResponse errorResponse = ErrorResponse.builder()
+                .status(HttpStatus.INTERNAL_SERVER_ERROR.value())
+                .error("Event Serialization Error")
+                .message("Kafka event JSON formatına dönüştürülürken hata oluştu.")
+                .path(exchange.getRequest().getPath().value())
+                .requestId(exchange.getRequest().getId())
+                .details(List.of(ex.getMessage()))
+                .build();
+
+        log.error("Event serialization error on {}: {}", errorResponse.getPath(), ex.getMessage(), ex);
+        return Mono.just(ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(errorResponse));
     }
 
     // ozel durumlar
