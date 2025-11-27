@@ -1,4 +1,4 @@
-package com.alimertkaya.digitalwallet.dto;
+package com.alimertkaya.digitalwallet.dto.enums;
 
 public enum TransactionType {
     DEPOSIT, // para yatirma
