@@ -1,7 +1,7 @@
 CREATE TABLE IF NOT EXISTS users (
     id SERIAL PRIMARY KEY,
     username VARCHAR(50) NOT NULL UNIQUE,
-    password VARCHAR(50) NOT NULL,
+    password VARCHAR(100) NOT NULL,
     email VARCHAR(100) NOT NULL UNIQUE,
     phone_number VARCHAR(20) UNIQUE,
 
@@ -21,12 +21,12 @@ CREATE TABLE IF NOT EXISTS users (
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE TABLE IF NOT EXISTS wallet (
+CREATE TABLE IF NOT EXISTS wallets (
     id SERIAL PRIMARY KEY,
-    user_id INT NOT NULL,
+    user_id BIGINT NOT NULL,
     name VARCHAR(100) NOT NULL,
     currency_code VARCHAR(10) NOT NULL,
-    balance NUMERIC(0,9) DEFAULT 0.00,
+    balance NUMERIC(15,2) DEFAULT 0.00,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
 
@@ -53,4 +53,15 @@ CREATE TABLE IF NOT EXISTS transaction_history (
         FOREIGN KEY(wallet_id)
         REFERENCES wallets(id)
         ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS exchange_rates (
+    id SERIAL PRIMARY KEY,
+    source_currency VARCHAR(3) NOT NULL,
+    target_currency VARCHAR(3) NOT NULL,
+    rate NUMERIC(19, 6) NOT NULL,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT unique_currency_pair
+        UNIQUE (source_currency, target_currency)
 );
