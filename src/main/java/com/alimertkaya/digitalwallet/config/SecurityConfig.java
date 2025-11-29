@@ -1,7 +1,6 @@
 package com.alimertkaya.digitalwallet.config;
 
 import com.alimertkaya.digitalwallet.config.filter.JwtAuthenticationFilter;
-import com.alimertkaya.digitalwallet.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -10,12 +9,9 @@ import org.springframework.security.config.annotation.method.configuration.Enabl
 import org.springframework.security.config.annotation.web.reactive.EnableWebFluxSecurity;
 import org.springframework.security.config.web.server.SecurityWebFiltersOrder;
 import org.springframework.security.config.web.server.ServerHttpSecurity;
-import org.springframework.security.core.userdetails.ReactiveUserDetailsService;
-import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.server.SecurityWebFilterChain;
-import reactor.core.publisher.Mono;
 
 @Configuration
 @EnableWebFluxSecurity
@@ -46,6 +42,12 @@ public class SecurityConfig {
                 // bu yollara izin ver
                 .pathMatchers(HttpMethod.POST, "/api/v1/auth/register").permitAll()
                 .pathMatchers(HttpMethod.POST, "/api/v1/auth/login").permitAll()
+                .pathMatchers(
+                        "/v3/api-docs/**",
+                        "/swagger-ui/**",
+                        "/swagger-ui.html",
+                        "/webjars/**"
+                ).permitAll()
                 // kalan istekler icin authentication iste
                 .anyExchange().authenticated()
         );
