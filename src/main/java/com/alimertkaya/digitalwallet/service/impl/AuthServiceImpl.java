@@ -82,7 +82,7 @@ public class AuthServiceImpl implements AuthService {
                 .switchIfEmpty(Mono.error(new ResponseStatusException(HttpStatus.UNAUTHORIZED,
                         "Kullanıcı bulunamadı veya şifre hatalı")))
                 .flatMap(user -> {
-                    // kullaici bulunduysa password match et
+                    // kullanici bulunduysa password match et
                     if (!passwordEncoder.matches(request.getPassword(), user.getPassword())) {
                         return Mono.error(new ResponseStatusException(HttpStatus.UNAUTHORIZED,
                                 "Kullanıcı bulunamadı veya şifre hatalı"));
@@ -90,6 +90,7 @@ public class AuthServiceImpl implements AuthService {
                     return Mono.just(AuthResponse.builder()
                             .token(jwtService.generateToken(user))
                             .username(user.getUsername())
+                            .firstName(user.getFirstName())
                             .build());
                 });
     }

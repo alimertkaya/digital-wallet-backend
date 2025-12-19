@@ -3,6 +3,8 @@ package com.alimertkaya.digitalwallet.dto;
 import com.alimertkaya.digitalwallet.dto.enums.HistoryDirection;
 import com.alimertkaya.digitalwallet.dto.enums.TransactionType;
 import com.alimertkaya.digitalwallet.entity.TransactionHistory;
+import com.fasterxml.jackson.annotation.JsonFormat;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -25,6 +27,8 @@ public class TransactionHistoryResponse {
     private BigDecimal balanceAfter;
     private Long relatedWalletId;
     private String description;
+    @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss")
+    @JsonProperty("date")
     private LocalDateTime createdAt;
 
     public static TransactionHistoryResponse fromEntity(TransactionHistory entity) {
