@@ -13,7 +13,7 @@ import java.time.LocalDate;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class UserResponse {
+public class UserProfileResponse {
     private String username;
     private String firstName;
     private String lastName;
@@ -26,8 +26,8 @@ public class UserResponse {
     private boolean isPhoneVerified;
     private boolean isKycVerified;
 
-    public static UserResponse fromEntity(User user) {
-        return UserResponse.builder()
+    public static UserProfileResponse fromEntity(User user) {
+        return UserProfileResponse.builder()
                 .username(user.getUsername())
                 .firstName(user.getFirstName())
                 .lastName(user.getLastName())
