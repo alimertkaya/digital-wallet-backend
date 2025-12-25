@@ -1,7 +1,6 @@
 package com.alimertkaya.digitalwallet.service.impl;
 
-import com.alimertkaya.digitalwallet.dto.ChangePasswordRequest;
-import com.alimertkaya.digitalwallet.dto.UserProfileResponse;
+import com.alimertkaya.digitalwallet.dto.*;
 import com.alimertkaya.digitalwallet.entity.User;
 import com.alimertkaya.digitalwallet.repository.UserRepository;
 import com.alimertkaya.digitalwallet.service.UserService;
@@ -41,7 +40,7 @@ public class UserServiceImpl implements UserService {
     public Mono<Void> changePassword(ChangePasswordRequest request) {
         return getCurrentUser()
                 .flatMap(user -> {
-                    if (!passwordEncoder.matches(request.getOldPassword(), request.getNewPassword())) {
+                    if (!passwordEncoder.matches(request.getOldPassword(), user.getPassword())) {
                         return Mono.error(new ResponseStatusException(HttpStatus.BAD_REQUEST, "Mevcut şifreniz hatalı!"));
                     }
 
@@ -54,5 +53,70 @@ public class UserServiceImpl implements UserService {
                     return userRepository.save(user);
                 })
                 .then();
+    }
+
+    @Override
+    public Mono<UserProfileResponse> updateUserInfo(UpdateUserInfoRequest request) {
+        return getCurrentUser()
+                .flatMap(user -> {
+                    boolean isChanged = false;
+                    if (request.getFirstName() != null && !request.getFirstName().equals(user.getFirstName())) {
+                        user.setFirstName(request.getFirstName());
+                        isChanged = true;
+                    }
+                    if (request.getLastName() != null && !request.getLastName().equals(user.getLastName())) {
+                        user.setLastName(request.getLastName());
+                        isChanged = true;
+                    }
+
+                    if (request.getBirthDate() != null && !request.getBirthDate().equals(user.getBirthDate())) {
+                        user.setBirthDate(request.getBirthDate());
+                        isChanged = true;
+                    }
+
+                    if (!isChanged) return Mono.just(UserProfileResponse.fromEntity(user));
+
+                    return userRepository.save(user).map(UserProfileResponse::fromEntity);
+                });
+    }
+
+    @Override
+    public Mono<UserProfileResponse> updateEmail(UpdateEmailRequest request) {
+        return getCurrentUser()
+                .flatMap(user -> {
+                    // ayni mail mi
+                    if (request.getNewEmail().equals(user.getEmail())) {
+                        return Mono.error(new ResponseStatusException(HttpStatus.BAD_REQUEST, "Yeni e-posta eskisiyle aynı olmaz."));
+                    }
+
+                    // mail kullanimda mi
+                    return userRepository.findByEmail(request.getNewEmail())
+                            .flatMap(existing -> Mono.<User>error(new ResponseStatusException(HttpStatus.BAD_REQUEST, "Bu e-posta kullanımda.")))
+                            .switchIfEmpty(Mono.just(user));
+                })
+                .flatMap(user -> {
+                    user.setEmail(request.getNewEmail());
+                    user.setEmailVerified(false); // mail degisti, dogrulama gerek
+                    return userRepository.save(user).map(UserProfileResponse::fromEntity);
+                });
+    }
+
+    @Override
+    public Mono<UserProfileResponse> updatePhone(UpdatePhoneRequest request) {
+        return getCurrentUser()
+                .flatMap(user -> {
+                    if (request.getNewPhoneNumber().equals(user.getPhoneNumber())) {
+                        return Mono.error(new ResponseStatusException(HttpStatus.BAD_REQUEST, "Yeni numara eskisiyle aynı olamaz."));
+                    }
+
+                    return userRepository.findByPhoneNumber(request.getNewPhoneNumber())
+                            .flatMap(existing -> Mono.<User>error(new ResponseStatusException(HttpStatus.BAD_REQUEST, "Bu numara kullanımda.")))
+                            .switchIfEmpty(Mono.just(user));
+                })
+                .flatMap(user -> {
+                    user.setPhoneNumber(request.getNewPhoneNumber());
+                    user.setPhoneVerified(false);
+                    return userRepository.save(user).map(UserProfileResponse::fromEntity);
+                });
     }
 }
