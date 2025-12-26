@@ -15,7 +15,6 @@ CREATE TABLE IF NOT EXISTS users (
     is_locked BOOLEAN DEFAULT false,
     is_email_verified BOOLEAN DEFAULT false,
     is_phone_verified BOOLEAN DEFAULT false,
-    is_kyc_verified BOOLEAN DEFAULT false,
 
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP

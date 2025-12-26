@@ -37,7 +37,6 @@ public class UserProfileResponse {
                 .birthDate(user.getBirthDate())
                 .isEmailVerified(user.isEmailVerified())
                 .isPhoneVerified(user.isPhoneVerified())
-                .isKycVerified(user.isKycVerified())
                 .build();
     }
 }

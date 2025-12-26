@@ -66,9 +66,6 @@ public class User implements UserDetails {
     @Column("is_phone_verified")
     private boolean isPhoneVerified;
 
-    @Column("is_kyc_verified")
-    private boolean isKycVerified;
-
     @Column("created_at")
     private LocalDateTime createdAt;
 
