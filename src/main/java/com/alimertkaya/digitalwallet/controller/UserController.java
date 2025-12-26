@@ -1,20 +1,12 @@
 package com.alimertkaya.digitalwallet.controller;
 
 import com.alimertkaya.digitalwallet.dto.*;
-import com.alimertkaya.digitalwallet.dto.enums.VerificationType;
-import com.alimertkaya.digitalwallet.entity.User;
 import com.alimertkaya.digitalwallet.service.UserService;
 import com.alimertkaya.digitalwallet.service.VerificationService;
-import com.alimertkaya.digitalwallet.service.impl.VerificationServiceImpl;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
-import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.security.core.context.ReactiveSecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 import reactor.core.publisher.Mono;
-
-import java.time.LocalDateTime;
 
 @RestController
 @RequestMapping("/api/v1/users")
@@ -49,4 +41,23 @@ public class UserController {
         return userService.updatePhone(request);
     }
 
+    @PostMapping("/verify-email")
+    public Mono<Void> verifyEmail(@Valid @RequestBody VerifyCodeRequest request) {
+        return userService.verifyEmail(request);
+    }
+
+    @PostMapping("/verify-phone")
+    public Mono<Void> verifyPhone(@Valid @RequestBody VerifyCodeRequest request) {
+        return userService.verifyPhone(request);
+    }
+
+    @PostMapping("/resend-email-code")
+    public Mono<Void> resendEmailCode() {
+        return userService.resendEmailCode();
+    }
+
+    @PostMapping("/resend-phone-code")
+    public Mono<Void> resendPhoneCode() {
+        return userService.resendPhoneCode();
+    }
 }

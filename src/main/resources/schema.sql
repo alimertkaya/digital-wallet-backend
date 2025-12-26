@@ -65,3 +65,13 @@ CREATE TABLE IF NOT EXISTS exchange_rates (
     CONSTRAINT unique_currency_pair
         UNIQUE (source_currency, target_currency)
 );
+
+CREATE TABLE IF NOT EXISTS verification_codes (
+    id SERIAL PRIMARY KEY,
+    user_id BIGINT NOT NULL,
+    code VARCHAR(10) NOT NULL,
+    type VARCHAR(50) NOT NULL,
+    expiry_date TIMESTAMP NOT NULL,
+
+    CONSTRAINT unique_user_code_type UNIQUE (user_id, type)
+);

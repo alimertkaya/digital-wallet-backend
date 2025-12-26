@@ -1,9 +1,11 @@
 package com.alimertkaya.digitalwallet.service.impl;
 
 import com.alimertkaya.digitalwallet.dto.*;
+import com.alimertkaya.digitalwallet.dto.enums.VerificationType;
 import com.alimertkaya.digitalwallet.entity.User;
 import com.alimertkaya.digitalwallet.repository.UserRepository;
 import com.alimertkaya.digitalwallet.service.UserService;
+import com.alimertkaya.digitalwallet.service.VerificationService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.Authentication;
@@ -20,6 +22,7 @@ public class UserServiceImpl implements UserService {
 
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
+    private final VerificationService verificationService;
 
     @Override
     public Mono<User> getCurrentUser() {
@@ -97,7 +100,10 @@ public class UserServiceImpl implements UserService {
                 .flatMap(user -> {
                     user.setEmail(request.getNewEmail());
                     user.setEmailVerified(false); // mail degisti, dogrulama gerek
-                    return userRepository.save(user).map(UserProfileResponse::fromEntity);
+                    return userRepository.save(user)
+                            .flatMap(savedUser -> verificationService.sendCode(savedUser.getId(), savedUser.getPhoneNumber(), VerificationType.PHONE_VERIFICATION)
+                                    .thenReturn(savedUser))
+                            .map(UserProfileResponse::fromEntity);
                 });
     }
 
@@ -116,7 +122,56 @@ public class UserServiceImpl implements UserService {
                 .flatMap(user -> {
                     user.setPhoneNumber(request.getNewPhoneNumber());
                     user.setPhoneVerified(false);
-                    return userRepository.save(user).map(UserProfileResponse::fromEntity);
+                    return userRepository.save(user)
+                            .flatMap(savedUser -> verificationService.sendCode(savedUser.getId(), savedUser.getPhoneNumber(), VerificationType.PHONE_VERIFICATION)
+                                    .thenReturn(savedUser))
+                            .map(UserProfileResponse::fromEntity);
                 });
+    }
+
+    @Override
+    public Mono<Void> verifyEmail(VerifyCodeRequest request) {
+        return getCurrentUser()
+                .flatMap(user -> {
+                    if (user.isEmailVerified()) {
+                        return Mono.error(new ResponseStatusException(HttpStatus.BAD_REQUEST, "Zaten doğrulanmış."));
+                    }
+
+                    return verificationService.verifyCode(user.getId(), request.getCode(), VerificationType.EMAIL_VERIFICATION)
+                            .flatMap(isValid -> {
+                                user.setEmailVerified(true);
+                                return userRepository.save(user);
+                            });
+                })
+                .then();
+    }
+
+    @Override
+    public Mono<Void> resendEmailCode() {
+        return getCurrentUser()
+                .flatMap(user -> verificationService.sendCode(user.getId(), user.getEmail(), VerificationType.EMAIL_VERIFICATION));
+    }
+
+    @Override
+    public Mono<Void> verifyPhone(VerifyCodeRequest request) {
+        return getCurrentUser()
+                .flatMap(user -> {
+                    if (user.isPhoneVerified()) {
+                        return Mono.error(new ResponseStatusException(HttpStatus.BAD_REQUEST, "Telefon numarası zaten doğrulanmış."));
+                    }
+
+                    return verificationService.verifyCode(user.getId(), request.getCode(), VerificationType.PHONE_VERIFICATION)
+                            .flatMap(isValid -> {
+                                user.setPhoneVerified(true);
+                                return userRepository.save(user);
+                            });
+                })
+                .then();
+    }
+
+    @Override
+    public Mono<Void> resendPhoneCode() {
+        return getCurrentUser()
+                .flatMap(user -> verificationService.sendCode(user.getId(), user.getEmail(), VerificationType.PHONE_VERIFICATION));
     }
 }

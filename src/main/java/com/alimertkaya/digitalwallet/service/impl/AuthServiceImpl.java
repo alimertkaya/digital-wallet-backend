@@ -3,10 +3,12 @@ package com.alimertkaya.digitalwallet.service.impl;
 import com.alimertkaya.digitalwallet.dto.AuthResponse;
 import com.alimertkaya.digitalwallet.dto.LoginRequest;
 import com.alimertkaya.digitalwallet.dto.RegisterRequest;
+import com.alimertkaya.digitalwallet.dto.enums.VerificationType;
 import com.alimertkaya.digitalwallet.entity.User;
 import com.alimertkaya.digitalwallet.repository.UserRepository;
 import com.alimertkaya.digitalwallet.service.AuthService;
 import com.alimertkaya.digitalwallet.service.JwtService;
+import com.alimertkaya.digitalwallet.service.VerificationService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -23,6 +25,7 @@ public class AuthServiceImpl implements AuthService {
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtService jwtService;
+    private final VerificationService verificationService;
 
     // mono dolu ise 400, empty ise continue
     private <T> Mono<Void> failIfPresent(Mono<T> mono, String message) {
@@ -61,13 +64,16 @@ public class AuthServiceImpl implements AuthService {
                             .isLocked(false)
                             .isEmailVerified(false)
                             .isPhoneVerified(false)
-                            .isKycVerified(false)
                             .createdAt(LocalDateTime.now())
                             .updatedAt(LocalDateTime.now())
                             .build();
 
                     // save db
                     return userRepository.save(newUser)
+                            .flatMap(savedUser -> {
+                                return verificationService.sendCode(savedUser.getId(), savedUser.getPhoneNumber(), VerificationType.PHONE_VERIFICATION)
+                                        .thenReturn(savedUser);
+                            })
                             .map(savedUser -> AuthResponse.builder()
                                     .token(jwtService.generateToken(savedUser))
                                     .username(savedUser.getUsername())
