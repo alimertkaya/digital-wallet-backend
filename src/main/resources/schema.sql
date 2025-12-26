@@ -74,3 +74,13 @@ CREATE TABLE IF NOT EXISTS verification_codes (
 
     CONSTRAINT unique_user_code_type UNIQUE (user_id, type)
 );
+
+CREATE TABLE IF NOT EXISTS notifications (
+    id SERIAL PRIMARY KEY,
+    user_id BIGINT NOT NULL,
+    title VARCHAR(100) NOT NULL,
+    message VARCHAR(255) NOT NULL,
+    type VARCHAR(50) NOT NULL,
+    is_read BOOLEAN DEFAULT FALSE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
