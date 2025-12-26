@@ -101,7 +101,7 @@ public class UserServiceImpl implements UserService {
                     user.setEmail(request.getNewEmail());
                     user.setEmailVerified(false); // mail degisti, dogrulama gerek
                     return userRepository.save(user)
-                            .flatMap(savedUser -> verificationService.sendCode(savedUser.getId(), savedUser.getPhoneNumber(), VerificationType.PHONE_VERIFICATION)
+                            .flatMap(savedUser -> verificationService.sendCode(savedUser.getId(), savedUser.getEmail(), VerificationType.EMAIL_VERIFICATION)
                                     .thenReturn(savedUser))
                             .map(UserProfileResponse::fromEntity);
                 });
@@ -172,6 +172,16 @@ public class UserServiceImpl implements UserService {
     @Override
     public Mono<Void> resendPhoneCode() {
         return getCurrentUser()
-                .flatMap(user -> verificationService.sendCode(user.getId(), user.getEmail(), VerificationType.PHONE_VERIFICATION));
+                .flatMap(user -> verificationService.sendCode(user.getId(), user.getPhoneNumber(), VerificationType.PHONE_VERIFICATION));
+    }
+
+    @Override
+    public Mono<Void> deactivateAccount() {
+        return getCurrentUser()
+                .flatMap(user -> {
+                    user.setEnabled(false);
+                    return userRepository.save(user);
+                })
+                .then();
     }
 }

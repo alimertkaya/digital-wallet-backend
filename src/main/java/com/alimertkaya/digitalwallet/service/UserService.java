@@ -18,4 +18,5 @@ public interface UserService {
     // yeniden gönderme
     Mono<Void> resendEmailCode();
     Mono<Void> resendPhoneCode();
+    Mono<Void> deactivateAccount();
 }

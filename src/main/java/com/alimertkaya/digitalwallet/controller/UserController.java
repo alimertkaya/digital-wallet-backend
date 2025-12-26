@@ -60,4 +60,9 @@ public class UserController {
     public Mono<Void> resendPhoneCode() {
         return userService.resendPhoneCode();
     }
+
+    @PostMapping("/deactivate")
+    public Mono<Void> deactivateAccount() {
+        return userService.deactivateAccount();
+    }
 }
