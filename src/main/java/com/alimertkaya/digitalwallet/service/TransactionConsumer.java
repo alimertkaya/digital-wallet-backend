@@ -1,7 +1,8 @@
 package com.alimertkaya.digitalwallet.service;
 
 import com.alimertkaya.digitalwallet.config.KafkaTopicConfig;
-import com.alimertkaya.digitalwallet.dto.TransactionEvent;
+import com.alimertkaya.digitalwallet.dto.enums.NotificationType;
+import com.alimertkaya.digitalwallet.dto.wallet.TransactionEvent;
 import com.alimertkaya.digitalwallet.dto.enums.HistoryDirection;
 import com.alimertkaya.digitalwallet.dto.enums.TransactionType;
 import com.alimertkaya.digitalwallet.entity.TransactionHistory;
@@ -26,6 +27,7 @@ public class TransactionConsumer {
     private final WalletRepository walletRepository;
     private final ObjectMapper objectMapper; // JSON -> object
     private final TransactionHistoryRepository transactionHistoryRepository;
+    private final NotificationService notificationService;
 
     // yeni mesaj gelince auto tetiklenir
     @KafkaListener(topics = KafkaTopicConfig.WALLET_TRANSACTIONS_TOPIC, groupId = "digital-wallet-group")
@@ -70,7 +72,13 @@ public class TransactionConsumer {
                                     currentBalance,
                                     null,
                                     "Para Yatırma"
-                            ));
+                            ))
+                            .flatMap(notify -> notificationService.createNotification(
+                                    wallet.getUserId(),
+                                    "Para Yatırma Başarılı",
+                                    event.getSourceAmount() + " " + event.getSourceCurrency() + " hesabınıza yüklendi.",
+                                    NotificationType.PAYMENT
+                            ).thenReturn(notify));
                 })
                 .doOnSuccess(updatedWallet -> log.info("Para yatırma başarılı. Yeni Bakiye: {}", updatedWallet.getBalanceAfter()))
                 .doOnError(error -> log.error("Para yatırma sırasında veritabını hatası", error))
@@ -97,7 +105,13 @@ public class TransactionConsumer {
                                     currentBalance,
                                     event.getTargetWalletId(),
                                     "Transfer Gönderimi"
-                            ));
+                            ))
+                            .flatMap(notify -> notificationService.createNotification(
+                                    sourceWallet.getUserId(),
+                                    "Para Transferi",
+                                    "Hesabınızdan " + event.getSourceAmount() + " " + event.getSourceCurrency() + " gönderildi.",
+                                    NotificationType.TRANSFER_OUT
+                            ).thenReturn(notify));
                 })
                 .flatMap(updatedSource -> {
                     // wallet guncelle, para yatir
@@ -117,7 +131,13 @@ public class TransactionConsumer {
                                                 currentBalance,
                                                 event.getSourceWalletId(),
                                                 "Transfer Alımı"
-                                        ));
+                                        ))
+                                        .flatMap(notify -> notificationService.createNotification(
+                                                targetWallet.getUserId(),
+                                                "Para Transferi Aldınız",
+                                                "Hesabınıza " + event.getTargetAmount() + " " + event.getTargetCurrency() + " geldi.",
+                                                NotificationType.TRANSFER_IN
+                                        ).thenReturn(notify));
                             });
                 })
                 .doOnSuccess(v -> log.info("Transfer başarıyla tamamlandı."))
@@ -144,7 +164,13 @@ public class TransactionConsumer {
                                     currentBalance,
                                     null,
                                     "Para Çekme"
-                            ));
+                            ))
+                            .flatMap(notify -> notificationService.createNotification(
+                                    wallet.getUserId(),
+                                    "Para Çekme İşlemi",
+                                    "Hesabınızdan " + event.getSourceAmount() + " " + event.getSourceCurrency() + " çekildi.",
+                                    NotificationType.PAYMENT
+                            ).thenReturn(notify));
                 })
                 .doOnSuccess(updatedWallet -> log.info("Para çekme başarılı. Yeni Bakiye: {}", updatedWallet.getBalanceAfter()))
                 .doOnError(error -> log.error("Para çekme sırasında veritabını hatası", error))
