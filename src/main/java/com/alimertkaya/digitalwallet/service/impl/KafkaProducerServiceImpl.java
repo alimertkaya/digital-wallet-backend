@@ -1,7 +1,7 @@
 package com.alimertkaya.digitalwallet.service.impl;
 
 import com.alimertkaya.digitalwallet.config.KafkaTopicConfig;
-import com.alimertkaya.digitalwallet.dto.TransactionEvent;
+import com.alimertkaya.digitalwallet.dto.wallet.TransactionEvent;
 import com.alimertkaya.digitalwallet.service.KafkaProducerService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;

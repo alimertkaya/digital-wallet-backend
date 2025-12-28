@@ -1,6 +1,6 @@
 package com.alimertkaya.digitalwallet.controller;
 
-import com.alimertkaya.digitalwallet.dto.*;
+import com.alimertkaya.digitalwallet.dto.wallet.*;
 import com.alimertkaya.digitalwallet.service.WalletService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;

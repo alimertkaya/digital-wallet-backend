@@ -1,8 +1,8 @@
 package com.alimertkaya.digitalwallet.service.impl;
 
-import com.alimertkaya.digitalwallet.dto.AuthResponse;
-import com.alimertkaya.digitalwallet.dto.LoginRequest;
-import com.alimertkaya.digitalwallet.dto.RegisterRequest;
+import com.alimertkaya.digitalwallet.dto.auth.AuthResponse;
+import com.alimertkaya.digitalwallet.dto.auth.LoginRequest;
+import com.alimertkaya.digitalwallet.dto.auth.RegisterRequest;
 import com.alimertkaya.digitalwallet.dto.enums.VerificationType;
 import com.alimertkaya.digitalwallet.entity.User;
 import com.alimertkaya.digitalwallet.repository.UserRepository;

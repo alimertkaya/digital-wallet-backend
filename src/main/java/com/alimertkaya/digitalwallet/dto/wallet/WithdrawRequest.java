@@ -1,4 +1,4 @@
-package com.alimertkaya.digitalwallet.dto;
+package com.alimertkaya.digitalwallet.dto.wallet;
 
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.NotNull;
@@ -13,7 +13,7 @@ import java.math.BigDecimal;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class DepositRequest {
+public class WithdrawRequest {
 
     @NotNull(message = "Tutar boş olamaz")
     @DecimalMin(value = "0.01", message = "Tutar en az 0.01 olmalıdır")

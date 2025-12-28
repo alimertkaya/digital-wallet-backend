@@ -1,8 +1,8 @@
 package com.alimertkaya.digitalwallet.controller;
 
-import com.alimertkaya.digitalwallet.dto.AuthResponse;
-import com.alimertkaya.digitalwallet.dto.LoginRequest;
-import com.alimertkaya.digitalwallet.dto.RegisterRequest;
+import com.alimertkaya.digitalwallet.dto.auth.AuthResponse;
+import com.alimertkaya.digitalwallet.dto.auth.LoginRequest;
+import com.alimertkaya.digitalwallet.dto.auth.RegisterRequest;
 import com.alimertkaya.digitalwallet.service.AuthService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;

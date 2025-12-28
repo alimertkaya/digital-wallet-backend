@@ -1,6 +1,6 @@
 package com.alimertkaya.digitalwallet.service;
 
-import com.alimertkaya.digitalwallet.dto.*;
+import com.alimertkaya.digitalwallet.dto.wallet.*;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 

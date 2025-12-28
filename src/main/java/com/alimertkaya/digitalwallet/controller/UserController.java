@@ -1,6 +1,7 @@
 package com.alimertkaya.digitalwallet.controller;
 
-import com.alimertkaya.digitalwallet.dto.*;
+import com.alimertkaya.digitalwallet.dto.notification.VerifyCodeRequest;
+import com.alimertkaya.digitalwallet.dto.user.*;
 import com.alimertkaya.digitalwallet.service.UserService;
 import com.alimertkaya.digitalwallet.service.VerificationService;
 import jakarta.validation.Valid;

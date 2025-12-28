@@ -1,4 +1,4 @@
-package com.alimertkaya.digitalwallet.dto;
+package com.alimertkaya.digitalwallet.dto.notification;
 
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;

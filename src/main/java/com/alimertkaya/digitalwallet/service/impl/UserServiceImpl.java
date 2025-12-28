@@ -1,7 +1,8 @@
 package com.alimertkaya.digitalwallet.service.impl;
 
-import com.alimertkaya.digitalwallet.dto.*;
 import com.alimertkaya.digitalwallet.dto.enums.VerificationType;
+import com.alimertkaya.digitalwallet.dto.notification.VerifyCodeRequest;
+import com.alimertkaya.digitalwallet.dto.user.*;
 import com.alimertkaya.digitalwallet.entity.User;
 import com.alimertkaya.digitalwallet.repository.UserRepository;
 import com.alimertkaya.digitalwallet.service.UserService;

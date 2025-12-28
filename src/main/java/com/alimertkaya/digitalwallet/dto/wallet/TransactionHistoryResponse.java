@@ -1,4 +1,4 @@
-package com.alimertkaya.digitalwallet.dto;
+package com.alimertkaya.digitalwallet.dto.wallet;
 
 import com.alimertkaya.digitalwallet.dto.enums.HistoryDirection;
 import com.alimertkaya.digitalwallet.dto.enums.TransactionType;

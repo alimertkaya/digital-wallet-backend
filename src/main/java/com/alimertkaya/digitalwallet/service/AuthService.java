@@ -1,8 +1,8 @@
 package com.alimertkaya.digitalwallet.service;
 
-import com.alimertkaya.digitalwallet.dto.AuthResponse;
-import com.alimertkaya.digitalwallet.dto.LoginRequest;
-import com.alimertkaya.digitalwallet.dto.RegisterRequest;
+import com.alimertkaya.digitalwallet.dto.auth.AuthResponse;
+import com.alimertkaya.digitalwallet.dto.auth.LoginRequest;
+import com.alimertkaya.digitalwallet.dto.auth.RegisterRequest;
 import reactor.core.publisher.Mono;
 
 public interface AuthService {

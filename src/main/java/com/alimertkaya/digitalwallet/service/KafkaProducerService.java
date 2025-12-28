@@ -1,6 +1,6 @@
 package com.alimertkaya.digitalwallet.service;
 
-import com.alimertkaya.digitalwallet.dto.TransactionEvent;
+import com.alimertkaya.digitalwallet.dto.wallet.TransactionEvent;
 import reactor.core.publisher.Mono;
 
 public interface KafkaProducerService {

@@ -1,7 +1,7 @@
 package com.alimertkaya.digitalwallet.service.impl;
 
-import com.alimertkaya.digitalwallet.dto.*;
 import com.alimertkaya.digitalwallet.dto.enums.TransactionType;
+import com.alimertkaya.digitalwallet.dto.wallet.*;
 import com.alimertkaya.digitalwallet.entity.User;
 import com.alimertkaya.digitalwallet.entity.Wallet;
 import com.alimertkaya.digitalwallet.repository.TransactionHistoryRepository;

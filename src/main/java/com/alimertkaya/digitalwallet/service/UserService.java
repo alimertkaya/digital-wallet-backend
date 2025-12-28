@@ -1,6 +1,7 @@
 package com.alimertkaya.digitalwallet.service;
 
-import com.alimertkaya.digitalwallet.dto.*;
+import com.alimertkaya.digitalwallet.dto.notification.VerifyCodeRequest;
+import com.alimertkaya.digitalwallet.dto.user.*;
 import com.alimertkaya.digitalwallet.entity.User;
 import reactor.core.publisher.Mono;
 

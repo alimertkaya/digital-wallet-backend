@@ -1,4 +1,4 @@
-package com.alimertkaya.digitalwallet.dto;
+package com.alimertkaya.digitalwallet.dto.auth;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;
