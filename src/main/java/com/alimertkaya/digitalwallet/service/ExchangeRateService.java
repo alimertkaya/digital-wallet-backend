@@ -6,6 +6,9 @@ import reactor.core.publisher.Mono;
 import java.math.BigDecimal;
 
 public interface ExchangeRateService {
+
+    Mono<Void> syncExchangeRates();
+
     // doviz cifti icin kuru gunceller veya olusturur
     Mono<ExchangeRate> updateExchangeRate(String sourceCurrency, String targetCurrency, BigDecimal rate);
 
