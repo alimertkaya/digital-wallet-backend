@@ -1,6 +1,7 @@
 package com.alimertkaya.digitalwallet.entity;
 
 import com.alimertkaya.digitalwallet.dto.enums.HistoryDirection;
+import com.alimertkaya.digitalwallet.dto.enums.TransactionCategory;
 import com.alimertkaya.digitalwallet.dto.enums.TransactionType;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -31,6 +32,9 @@ public class TransactionHistory {
 
     @Column("type")
     private TransactionType type;
+
+    @Column("category")
+    private TransactionCategory category;
 
     @Column("direction")
     private HistoryDirection direction;

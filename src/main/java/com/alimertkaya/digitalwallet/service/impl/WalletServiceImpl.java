@@ -141,6 +141,7 @@ public class WalletServiceImpl implements WalletService {
                                 .targetAmount(convertedAmount)
                                 .sourceCurrency(sourceWallet.getCurrencyCode())
                                 .targetCurrency(targetWallet.getCurrencyCode())
+                                .description(request.getDescription())
                                 .build();
 
                         log.info("Transfer talebi Kafka'ya gönderiliyor. {} -> {}, Tutar: {} {}, Hedef Tutar: {} {}",
@@ -173,6 +174,7 @@ public class WalletServiceImpl implements WalletService {
                             .targetAmount(request.getAmount())
                             .sourceCurrency(wallet.getCurrencyCode())
                             .targetCurrency(wallet.getCurrencyCode())
+                            .description(request.getDescription())
                             .build();
 
                     log.info("Para çekme talebi Kafka'ya gönderiliyor. Cüzdan ID: {}, Tutar: {}", wallet.getId(), request.getAmount());

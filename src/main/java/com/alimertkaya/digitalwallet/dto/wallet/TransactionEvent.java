@@ -1,5 +1,6 @@
 package com.alimertkaya.digitalwallet.dto.wallet;
 
+import com.alimertkaya.digitalwallet.dto.enums.TransactionCategory;
 import com.alimertkaya.digitalwallet.dto.enums.TransactionType;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -22,6 +23,8 @@ public class TransactionEvent {
     @Builder.Default
     private LocalDateTime eventTimestamp = LocalDateTime.now();
 
+    private TransactionCategory category;
+    private String description;
     // DEPOSIT, WITHDRAW, TRANSFER
     private TransactionType type;
 

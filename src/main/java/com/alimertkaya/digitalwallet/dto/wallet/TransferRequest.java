@@ -1,5 +1,6 @@
 package com.alimertkaya.digitalwallet.dto.wallet;
 
+import com.alimertkaya.digitalwallet.dto.enums.TransactionCategory;
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.NotNull;
 import lombok.AllArgsConstructor;
@@ -21,4 +22,6 @@ public class TransferRequest {
     @NotNull(message = "Tutar boş olamaz")
     @DecimalMin(value = "0.01", message = "Tutar en az 0.01 olmalıdır")
     private BigDecimal amount;
+    private TransactionCategory category;
+    private String description;
 }

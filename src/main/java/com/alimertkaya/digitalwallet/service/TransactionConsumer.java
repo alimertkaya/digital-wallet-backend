@@ -2,6 +2,7 @@ package com.alimertkaya.digitalwallet.service;
 
 import com.alimertkaya.digitalwallet.config.KafkaTopicConfig;
 import com.alimertkaya.digitalwallet.dto.enums.NotificationType;
+import com.alimertkaya.digitalwallet.dto.enums.TransactionCategory;
 import com.alimertkaya.digitalwallet.dto.wallet.TransactionEvent;
 import com.alimertkaya.digitalwallet.dto.enums.HistoryDirection;
 import com.alimertkaya.digitalwallet.dto.enums.TransactionType;
@@ -28,6 +29,7 @@ public class TransactionConsumer {
     private final ObjectMapper objectMapper; // JSON -> object
     private final TransactionHistoryRepository transactionHistoryRepository;
     private final NotificationService notificationService;
+    private final TransactionCategoryService categoryService;
 
     // yeni mesaj gelince auto tetiklenir
     @KafkaListener(topics = KafkaTopicConfig.WALLET_TRANSACTIONS_TOPIC, groupId = "digital-wallet-group")
@@ -71,7 +73,8 @@ public class TransactionConsumer {
                                     event.getTargetCurrency(),
                                     currentBalance,
                                     null,
-                                    "Para Yatırma"
+                                    "Para Yatırma",
+                                    TransactionCategory.DEPOSIT
                             ))
                             .flatMap(notify -> notificationService.createNotification(
                                     wallet.getUserId(),
@@ -87,6 +90,10 @@ public class TransactionConsumer {
 
     public void processTransfer(TransactionEvent event) {
         log.info("Transfer işlemi başlatılıyor. {} -> {}, Tutar: {} {}", event.getSourceWalletId(), event.getTargetWalletId(), event.getSourceAmount(), event.getSourceCurrency());
+
+        TransactionCategory calculatedCategory = (event.getCategory() != null)
+                                                ? event.getCategory()
+                                                : categoryService.categorize(TransactionType.TRANSFER, event.getDescription());
 
         walletRepository.findById(event.getSourceWalletId())
                 .flatMap(sourceWallet -> {
@@ -104,7 +111,8 @@ public class TransactionConsumer {
                                     event.getTargetCurrency(),
                                     currentBalance,
                                     event.getTargetWalletId(),
-                                    "Transfer Gönderimi"
+                                    event.getDescription(),
+                                    calculatedCategory
                             ))
                             .flatMap(notify -> notificationService.createNotification(
                                     sourceWallet.getUserId(),
@@ -119,6 +127,7 @@ public class TransactionConsumer {
                             .flatMap(targetWallet -> {
                                 BigDecimal currentBalance = targetWallet.getBalance();
                                 targetWallet.setBalance(targetWallet.getBalance().add(event.getTargetAmount()));
+
                                 return walletRepository.save(targetWallet)
                                         .flatMap(savedTarget -> saveHistory(
                                                 savedTarget,
@@ -130,7 +139,8 @@ public class TransactionConsumer {
                                                 event.getTargetCurrency(),
                                                 currentBalance,
                                                 event.getSourceWalletId(),
-                                                "Transfer Alımı"
+                                                event.getDescription(),
+                                                TransactionCategory.TRANSFER
                                         ))
                                         .flatMap(notify -> notificationService.createNotification(
                                                 targetWallet.getUserId(),
@@ -152,6 +162,12 @@ public class TransactionConsumer {
                 .flatMap(wallet -> {
                     BigDecimal currentBalance = wallet.getBalance();
                     wallet.setBalance(wallet.getBalance().subtract(event.getSourceAmount()));
+
+                    TransactionCategory category = categoryService.categorize(
+                            TransactionType.WITHDRAW,
+                            event.getDescription()
+                    );
+
                     return walletRepository.save(wallet)
                             .flatMap(savedWallet -> saveHistory(
                                     savedWallet,
@@ -163,7 +179,8 @@ public class TransactionConsumer {
                                     event.getTargetCurrency(),
                                     currentBalance,
                                     null,
-                                    "Para Çekme"
+                                    event.getDescription(),
+                                    category
                             ))
                             .flatMap(notify -> notificationService.createNotification(
                                     wallet.getUserId(),
@@ -179,7 +196,7 @@ public class TransactionConsumer {
 
     // helper method
     private Mono<TransactionHistory> saveHistory(Wallet wallet, TransactionType type, HistoryDirection direction, BigDecimal sourceAmount, BigDecimal targetAmount,
-                                                 String sourceCurrency, String targetCurrency, BigDecimal balanceBefore, Long relatedWalletId, String description) {
+                                                 String sourceCurrency, String targetCurrency, BigDecimal balanceBefore, Long relatedWalletId, String description, TransactionCategory category) {
         BigDecimal amountToSave = (direction == HistoryDirection.OUT) ? sourceAmount : targetAmount;
         String currencyToSave = (direction == HistoryDirection.OUT) ? sourceCurrency : targetCurrency;
 
@@ -187,6 +204,7 @@ public class TransactionConsumer {
                 .walletId(wallet.getId())
                 .relatedWalletId(relatedWalletId)
                 .type(type)
+                .category(category)
                 .amount(amountToSave)
                 .currencyCode(currencyToSave)
                 .balanceBefore(balanceBefore)

@@ -40,6 +40,7 @@ CREATE TABLE IF NOT EXISTS transaction_history (
     wallet_id BIGINT NOT NULL,
     related_wallet_id BIGINT, -- transfer de karsi tarafin id si
     type VARCHAR(20) NOT NULL,
+    category VARCHAR(50) NOT NULL,
     direction VARCHAR(10) NOT NULL,
     amount NUMERIC(19, 2) NOT NULL,
     balance_before NUMERIC(19,2),

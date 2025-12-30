@@ -18,4 +18,6 @@ public class WithdrawRequest {
     @NotNull(message = "Tutar boş olamaz")
     @DecimalMin(value = "0.01", message = "Tutar en az 0.01 olmalıdır")
     private BigDecimal amount;
+
+    private String description;
 }
