@@ -100,4 +100,9 @@ public class ExchangeRateServiceImpl implements ExchangeRateService {
                 });
 
     }
+
+    @Override
+    public Flux<ExchangeRate> getAllRates() {
+        return exchangeRateRepository.findAllBySourceCurrency("USD");
+    }
 }
