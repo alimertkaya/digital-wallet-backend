@@ -14,6 +14,7 @@ import java.util.List;
 @AllArgsConstructor
 public class AnalysisResponse {
     private BigDecimal totalBalanceInUSD;
+    private BigDecimal totalBalanceInTL;
     private BigDecimal monthlyIncome;
     private BigDecimal monthlyExpense;
     private List<CategorySpendResponse> categoryDistribution;
