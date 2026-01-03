@@ -34,72 +34,93 @@ public class AnalyticsServiceImpl implements AnalyticsService {
 
     @Override
     public Mono<AnalysisResponse> getMonthlyAnalysis() {
-        return userService.getCurrentUser().flatMap(user ->
-            walletRepository.findByUserId(user.getId())
-                    .collectList()
-                    .flatMap(wallets -> {
-                        if (wallets.isEmpty()) {
-                            return Mono.just(AnalysisResponse.builder()
-                                    .totalBalanceInUSD(BigDecimal.ZERO)
-                                    .totalBalanceInTL(BigDecimal.ZERO)
-                                    .build());
-                        }
-                        List<Long> walletIds = wallets.stream().map(Wallet::getId).toList();
-                        LocalDateTime startOfMonth = LocalDateTime.now().withDayOfMonth(1).withHour(0).withMinute(0);
+        return userService.getCurrentUser().flatMap(user -> walletRepository.findByUserId(user.getId())
+                .collectList()
+                .flatMap(wallets -> {
+                    if (wallets.isEmpty()) {
+                        return Mono.just(AnalysisResponse.builder()
+                                .totalBalanceInUSD(BigDecimal.ZERO)
+                                .totalBalanceInTL(BigDecimal.ZERO)
+                                .build());
+                    }
+                    List<Long> walletIds = wallets.stream().map(Wallet::getId).toList();
+                    LocalDateTime startOfMonth = LocalDateTime.now().withDayOfMonth(1).withHour(0).withMinute(0);
 
-                        Mono<BigDecimal> totalUsdBalance = Flux.fromIterable(wallets)
-                                .flatMap(w -> exchangeRateService.convertCurrency(w.getBalance(), w.getCurrencyCode(), "USD"))
-                                .reduce(BigDecimal.ZERO, BigDecimal::add);
+                    Mono<BigDecimal> totalUsdBalance = Flux.fromIterable(wallets)
+                            .flatMap(w -> exchangeRateService.convertCurrency(w.getBalance(), w.getCurrencyCode(),
+                                    "USD"))
+                            .reduce(BigDecimal.ZERO, BigDecimal::add);
 
-                        Mono<BigDecimal> totalTlBalance = Flux.fromIterable(wallets)
-                                .flatMap(w -> exchangeRateService.convertCurrency(w.getBalance(), w.getCurrencyCode(), "TRY"))
-                                .reduce(BigDecimal.ZERO, BigDecimal::add);
+                    Mono<BigDecimal> totalTlBalance = Flux.fromIterable(wallets)
+                            .flatMap(w -> exchangeRateService.convertCurrency(w.getBalance(), w.getCurrencyCode(),
+                                    "TRY"))
+                            .reduce(BigDecimal.ZERO, BigDecimal::add);
 
-                        Mono<List<TransactionHistory>> historyList = transactionHistoryRepository.findByWalletIdInAndCreatedAtAfter(walletIds, startOfMonth)
-                                .collectList();
+                    Mono<List<TransactionHistory>> historyList = transactionHistoryRepository
+                            .findByWalletIdInAndCreatedAtAfter(walletIds, startOfMonth)
+                            .collectList();
 
-                        return Mono.zip(totalUsdBalance, totalTlBalance, historyList)
-                                .map(tuple -> {
-                                    BigDecimal netWorthUsd = tuple.getT1();
-                                    BigDecimal netWorthTl = tuple.getT2();
-                                    List<TransactionHistory> histories = tuple.getT3();
+                    return Mono.zip(totalUsdBalance, totalTlBalance, historyList)
+                            .flatMap(tuple -> {
+                                BigDecimal netWorthUsd = tuple.getT1();
+                                BigDecimal netWorthTl = tuple.getT2();
+                                List<TransactionHistory> histories = tuple.getT3();
 
-                                    BigDecimal income = BigDecimal.ZERO;
-                                    BigDecimal expense = BigDecimal.ZERO;
-                                    Map<TransactionCategory, BigDecimal> categoryMap = new HashMap<>();
+                                // Her işlemi TL çevirir
+                                Mono<BigDecimal> incomeMono = Flux.fromIterable(histories)
+                                        .filter(h -> h.getDirection() == HistoryDirection.IN)
+                                        .flatMap(h -> exchangeRateService.convertCurrency(h.getAmount(),
+                                                h.getCurrencyCode(), "TRY"))
+                                        .reduce(BigDecimal.ZERO, BigDecimal::add);
 
-                                    for (TransactionHistory h : histories) {
-                                        if (h.getDirection() == HistoryDirection.IN) {
-                                            income = income.add(h.getAmount());
-                                        } else {
-                                            expense = expense.add(h.getAmount());
-                                            categoryMap.merge(h.getCategory(), h.getAmount(), BigDecimal::add);
-                                        }
-                                    }
+                                Mono<BigDecimal> expenseMono = Flux.fromIterable(histories)
+                                        .filter(h -> h.getDirection() == HistoryDirection.OUT)
+                                        .flatMap(h -> exchangeRateService.convertCurrency(h.getAmount(),
+                                                h.getCurrencyCode(), "TRY"))
+                                        .reduce(BigDecimal.ZERO, BigDecimal::add);
 
-                                    BigDecimal finalTotalExpense = expense;
-                                    List<CategorySpendResponse> distribution = categoryMap.entrySet().stream()
-                                            .map(e -> {
-                                                double percentage = 0;
+                                // Kategori bazlı harcamaları TL cevirir
+                                Mono<Map<TransactionCategory, BigDecimal>> categoryMapMono = Flux
+                                        .fromIterable(histories)
+                                        .filter(h -> h.getDirection() == HistoryDirection.OUT
+                                                && h.getCategory() != null)
+                                        .flatMap(h -> exchangeRateService
+                                                .convertCurrency(h.getAmount(), h.getCurrencyCode(), "TRY")
+                                                .map(convertedAmount -> Map.entry(h.getCategory(), convertedAmount)))
+                                        .reduce(new HashMap<TransactionCategory, BigDecimal>(), (map, entry) -> {
+                                            map.merge(entry.getKey(), entry.getValue(), BigDecimal::add);
+                                            return map;
+                                        });
 
-                                                if (finalTotalExpense.compareTo(BigDecimal.ZERO) > 0) {
-                                                    percentage = e.getValue()
-                                                            .divide(finalTotalExpense, 4, RoundingMode.HALF_UP)
-                                                            .doubleValue() * 100;
-                                                }
-                                                return new CategorySpendResponse(e.getKey(), e.getValue(), percentage);
-                                            })
-                                            .toList();
+                                return Mono.zip(incomeMono, expenseMono, categoryMapMono)
+                                        .map(result -> {
+                                            BigDecimal income = result.getT1();
+                                            BigDecimal expense = result.getT2();
+                                            Map<TransactionCategory, BigDecimal> categoryMap = result.getT3();
 
-                                    return AnalysisResponse.builder()
-                                            .totalBalanceInUSD(netWorthUsd)
-                                            .totalBalanceInTL(netWorthTl)
-                                            .monthlyIncome(income)
-                                            .monthlyExpense(expense)
-                                            .categoryDistribution(distribution)
-                                            .build();
-                                });
-                    })
-        );
+                                            List<CategorySpendResponse> distribution = categoryMap.entrySet().stream()
+                                                    .map(e -> {
+                                                        double percentage = 0;
+
+                                                        if (expense.compareTo(BigDecimal.ZERO) > 0) {
+                                                            percentage = e.getValue()
+                                                                    .divide(expense, 4, RoundingMode.HALF_UP)
+                                                                    .doubleValue() * 100;
+                                                        }
+                                                        return new CategorySpendResponse(e.getKey(), e.getValue(),
+                                                                percentage);
+                                                    })
+                                                    .toList();
+
+                                            return AnalysisResponse.builder()
+                                                    .totalBalanceInUSD(netWorthUsd)
+                                                    .totalBalanceInTL(netWorthTl)
+                                                    .monthlyIncome(income)
+                                                    .monthlyExpense(expense)
+                                                    .categoryDistribution(distribution)
+                                                    .build();
+                                        });
+                            });
+                }));
     }
 }

@@ -197,4 +197,21 @@ public class WalletServiceImpl implements WalletService {
                 })
                 .map(TransactionHistoryResponse::fromEntity);
     }
+
+    @Override
+    public Mono<Void> deleteWallet(Long walletId) {
+        return getCurrentUser()
+                .flatMap(user -> walletRepository.findByIdAndUserId(walletId, user.getId())
+                        .switchIfEmpty(Mono.error(new ResponseStatusException(HttpStatus.NOT_FOUND,
+                                "Cüzdan bulunamadı veya bu cüzdana erişim yetkiniz yok."))))
+                .flatMap(wallet -> {
+                    if (wallet.getBalance().compareTo(BigDecimal.ZERO) > 0) {
+                        return Mono.error(new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                                "Bakiyesi olan cüzdan silinemez. Önce bakiyeyi çekin veya transfer edin."));
+                    }
+                    log.info("Cüzdan siliniyor. ID: {}, Kullanıcı ID: {}", wallet.getId(),
+                            wallet.getUserId());
+                    return walletRepository.delete(wallet);
+                });
+    }
 }

@@ -56,4 +56,10 @@ public class WalletController {
                                                                         @RequestParam(defaultValue = "20") int size) {
         return walletService.getWalletTransactionHistory(walletId, page, size);
     }
+
+    @DeleteMapping("/{walletId}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public Mono<Void> deleteWallet(@PathVariable Long walletId) {
+        return walletService.deleteWallet(walletId);
+    }
 }

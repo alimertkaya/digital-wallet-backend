@@ -24,4 +24,6 @@ public interface WalletService {
     Mono<Void> withdrawFromWallet(Long walletId, WithdrawRequest request);
 
     Flux<TransactionHistoryResponse> getWalletTransactionHistory(Long walletId, int page, int size);
+
+    Mono<Void> deleteWallet(Long walletId);
 }
